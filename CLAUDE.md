@@ -1,4 +1,4 @@
-# prism-reeder
+# CLAUDE.md - AI Agent Guidelines for Prism RSS Reader
 
 ## Project Overview
 
@@ -803,3 +803,4 @@ VITE_APP_NAME=Prism RSS Reader
 ```
 
 This data contract enables true parallel development while ensuring type safety and API consistency across both services.
+
