@@ -21,13 +21,13 @@ mocks/
 ### Basic Data Access
 
 ```typescript
-import { mockData, mockApiResponses } from '../mocks';
+import { mockData, mockApiResponses } from "../mocks";
 
 // Get all mock categories
 const categories = mockData.categories;
 
 // Get feeds for a specific category
-const techFeeds = mockData.feeds.filter(f => f.category_id === 'cat-1');
+const techFeeds = mockData.feeds.filter((f) => f.category_id === "cat-1");
 
 // Get unread entries
 const unreadEntries = mockData.unreadEntries;
@@ -36,7 +36,7 @@ const unreadEntries = mockData.unreadEntries;
 ### API Response Mocking
 
 ```typescript
-import { mockApiResponses, mockErrors } from '../mocks';
+import { mockApiResponses, mockErrors } from "../mocks";
 
 // Mock successful API calls
 const loginResponse = mockApiResponses.auth.login;
@@ -50,17 +50,17 @@ const rateLimitError = mockErrors.rateLimit;
 ### React Query Integration
 
 ```typescript
-import { useQuery } from '@tanstack/react-query';
-import { mockApiResponses } from '../mocks';
+import { useQuery } from "@tanstack/react-query";
+import { mockApiResponses } from "../mocks";
 
 const useMockFeeds = () => {
   return useQuery({
-    queryKey: ['feeds'],
+    queryKey: ["feeds"],
     queryFn: async () => {
       // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
       return mockApiResponses.feeds.list;
-    }
+    },
   });
 };
 ```
@@ -68,47 +68,50 @@ const useMockFeeds = () => {
 ### WebSocket Event Testing
 
 ```typescript
-import { createWebSocketMock, mockWebSocketEvents } from '../mocks/websocket';
+import { createWebSocketMock, mockWebSocketEvents } from "../mocks/websocket";
 
-const wsConnection = createWebSocketMock('ws://localhost:3000/api/v1/ws');
+const wsConnection = createWebSocketMock("ws://localhost:3000/api/v1/ws");
 
-wsConnection.addEventListener('feed_updated', (event) => {
-  console.log('Feed updated:', event.data);
+wsConnection.addEventListener("feed_updated", (event) => {
+  console.log("Feed updated:", event.data);
   // Update UI with new entries
 });
 
 // Manually trigger events for testing
-MockWebSocket.triggerEvent('scraping_job_completed');
+MockWebSocket.triggerEvent("scraping_job_completed");
 ```
 
 ### Component Testing with Mock Data
 
 ```typescript
 // FeedList.test.tsx
-import { render, screen } from '@testing-library/react';
-import { mockFeeds } from '../mocks';
-import { FeedList } from './FeedList';
+import { render, screen } from "@testing-library/react";
+import { mockFeeds } from "../mocks";
+import { FeedList } from "./FeedList";
 
-test('renders feed list correctly', () => {
+test("renders feed list correctly", () => {
   render(<FeedList feeds={mockFeeds} />);
-  
-  expect(screen.getByText('TechCrunch')).toBeInTheDocument();
-  expect(screen.getByText('23')).toBeInTheDocument(); // unread count
+
+  expect(screen.getByText("TechCrunch")).toBeInTheDocument();
+  expect(screen.getByText("23")).toBeInTheDocument(); // unread count
 });
 ```
 
 ### Error State Testing
 
 ```typescript
-import { mockErrors } from '../mocks';
+import { mockErrors } from "../mocks";
 
 const FeedCreateForm = () => {
   const [error, setError] = useState(null);
-  
+
   const handleSubmit = async (feedData) => {
     try {
       // In development, simulate validation error
-      if (process.env.NODE_ENV === 'development' && !feedData.url.startsWith('http')) {
+      if (
+        process.env.NODE_ENV === "development" &&
+        !feedData.url.startsWith("http")
+      ) {
         throw mockErrors.validation;
       }
       // ... actual API call
@@ -116,7 +119,7 @@ const FeedCreateForm = () => {
       setError(err);
     }
   };
-  
+
   return (
     <form onSubmit={handleSubmit}>
       {error && <ErrorMessage error={error} />}
@@ -129,18 +132,18 @@ const FeedCreateForm = () => {
 ### Search Functionality
 
 ```typescript
-import { searchMockEntries } from '../mocks';
+import { searchMockEntries } from "../mocks";
 
 const useSearch = (query: string, filters: any) => {
   const [results, setResults] = useState([]);
-  
+
   useEffect(() => {
     if (query.length > 2) {
       const searchResults = searchMockEntries(query, filters);
       setResults(searchResults.data);
     }
   }, [query, filters]);
-  
+
   return results;
 };
 ```
@@ -148,18 +151,18 @@ const useSearch = (query: string, filters: any) => {
 ### Pagination Testing
 
 ```typescript
-import { getMockEntriesPaginated } from '../mocks';
+import { getMockEntriesPaginated } from "../mocks";
 
 const useInfiniteEntries = () => {
   const [entries, setEntries] = useState([]);
   const [page, setPage] = useState(0);
-  
+
   const loadMoreEntries = () => {
     const response = getMockEntriesPaginated(page + 1, 20);
-    setEntries(prev => [...prev, ...response.data]);
-    setPage(prev => prev + 1);
+    setEntries((prev) => [...prev, ...response.data]);
+    setPage((prev) => prev + 1);
   };
-  
+
   return { entries, loadMoreEntries };
 };
 ```
@@ -167,11 +170,11 @@ const useInfiniteEntries = () => {
 ### Category Statistics
 
 ```typescript
-import { getMockCategoryStats } from '../mocks';
+import { getMockCategoryStats } from "../mocks";
 
 const CategoryCard = ({ category }) => {
   const stats = getMockCategoryStats(category.id);
-  
+
   return (
     <div>
       <h3>{category.title}</h3>
@@ -193,12 +196,14 @@ const CategoryCard = ({ category }) => {
 ## Data Characteristics
 
 ### Feeds (47 total)
+
 - **RSS/Atom feeds**: TechCrunch, Ars Technica, OpenAI Blog, etc.
 - **Scraped feeds**: Towards Data Science, Dev.to posts
 - **Error states**: Feeds with fetch errors, paused feeds
 - **Various intervals**: 30min to 6hr refresh rates
 
 ### Entries (1000+ total)
+
 - **Rich content**: HTML with code blocks, lists, images
 - **Media attachments**: Videos, PDFs, images
 - **Reading metadata**: Time estimates, word counts
@@ -206,6 +211,7 @@ const CategoryCard = ({ category }) => {
 - **Tags and categorization**: User-defined tags
 
 ### Categories (7 total)
+
 - Technology, AI/ML, Web Development, Design, etc.
 - Realistic feed counts and unread numbers
 - Color coding for UI theming
