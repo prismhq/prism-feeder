@@ -2,9 +2,9 @@
 
 ## Project Overview
 
-AI-powered person tracking RSS service that creates personalized feeds by monitoring individuals across multiple platforms. Built as a microservices architecture with Clojure backend and TypeScript frontend.
+AI-powered entity tracking RSS service that creates personalized feeds by monitoring any entity (people, companies, products, topics, events) across multiple platforms. Built as a microservices architecture with Clojure backend and TypeScript frontend.
 
-**Core Concept**: Users provide a person's name and optional profile links, select what types of updates they want to track, and receive a personalized RSS feed containing news-like events about that person from across the web.
+**Core Concept**: Users provide an entity's name and optional identifiers, select what types of updates they want to track, and receive a personalized RSS feed containing news-like events about that entity from across the web.
 
 ## Architecture
 
@@ -26,7 +26,7 @@ lein deps
 lein test
 
 # Run specific test
-lein test prism.persons.core-test/test-person-tracking
+lein test prism.entities.core-test/test-entity-tracking
 
 # Start development server
 lein run
@@ -57,7 +57,7 @@ npm run dev
 npm test
 
 # Run specific test
-npm test -- --testNamePattern="PersonForm component"
+npm test -- --testNamePattern="EntityForm component"
 
 # Type checking
 npm run type-check
@@ -91,6 +91,26 @@ docker-compose exec backend lein migrate reset
 
 ## Data Contract
 
+### Entity Types & Event Classifications
+
+The system supports different entity types, each with their own relevant event types:
+
+#### Person
+- **Event Types**: `career`, `content`, `open_source`, `press`, `education`, `hobbies`, `life`, `relationship`
+- **Event Subtypes**: `job_change`, `promotion`, `speaking`, `blog_post`, `video`, `repo_release`, `interview`, `mention`
+
+#### Company  
+- **Event Types**: `funding`, `product_launch`, `hiring`, `partnerships`, `press`, `financial`, `legal`
+- **Event Subtypes**: `series_a`, `series_b`, `ipo`, `acquisition`, `product_release`, `executive_hire`, `partnership`
+
+#### Product
+- **Event Types**: `release`, `update`, `review`, `integration`, `security`, `pricing`, `deprecation`
+- **Event Subtypes**: `major_release`, `minor_update`, `security_patch`, `price_change`, `feature_launch`
+
+#### Topic
+- **Event Types**: `research`, `news`, `discussion`, `breakthrough`, `regulation`, `trend`, `analysis`
+- **Event Subtypes**: `research_paper`, `news_article`, `regulatory_change`, `market_analysis`
+
 ### Core Data Models
 
 #### User Entity
@@ -114,34 +134,38 @@ docker-compose exec backend lein migrate reset
 }
 ```
 
-#### Person Entity
+#### Entity
 
 ```json
 {
-  "Person": {
+  "Entity": {
     "id": "uuid",
     "user_id": "uuid",
+    "entity_type": "person|company|product|topic|event|project",
     "name": "string",
     "aliases": ["string"],
-    "known_profiles": [
+    "description": "string?",
+    "known_identifiers": [
       {
-        "platform": "linkedin|github|youtube|substack|twitter|personal_site|company_site",
-        "url": "string",
-        "username": "string?",
+        "type": "profile|domain|handle|ticker|keyword|username",
+        "platform": "linkedin|github|youtube|substack|twitter|news|crunchbase|producthunt|reddit|official_site",
+        "value": "string",
+        "url": "string?",
         "verified": "boolean",
         "last_checked": "ISO8601"
       }
     ],
     "tracking_config": {
-      "event_types": ["career|content|open_source|press|projects|education|hobbies|life|relationship"],
-      "sources": ["github|youtube|blog|news|product_hunt|scholar|podcasts"],
+      "event_types": [], // Dynamic based on entity_type
+      "sources": ["github|youtube|blog|news|product_hunt|scholar|podcasts|crunchbase|reddit|official"],
       "time_window_days": "number",
-      "authorship_filter": "self_only|include_mentions|all",
+      "mention_filter": "direct_only|include_mentions|all",
       "region_filter": ["string"],
-      "privacy_settings": {
-        "hide_life_events": "boolean",
-        "hide_relationship_items": "boolean",
-        "public_only": "boolean"
+      "sensitivity_settings": {
+        // Dynamic based on entity_type
+        "hide_sensitive_events": "boolean",
+        "public_only": "boolean",
+        "min_confidence_threshold": "number"
       }
     },
     "status": "active|paused|error",
@@ -163,14 +187,16 @@ docker-compose exec backend lein migrate reset
 {
   "Event": {
     "id": "uuid",
-    "person_id": "uuid",
+    "entity_id": "uuid",
+    "entity_type": "person|company|product|topic|event|project",
     "title": "string",
     "url": "string",
     "content": "string",
     "summary": "string?",
-    "event_type": "career.job_change|career.promotion|career.speaking|content.blog|content.video|content.podcast|open_source.release|open_source.repo|press.interview|press.mention|projects.launch|projects.funding|education.degree|education.certification|hobbies.signal|life.move|life.milestone|relationship.status",
-    "source_platform": "linkedin|github|youtube|substack|twitter|news|blog|podcast",
-    "author_type": "self|press|mention",
+    "event_type": "string", // Dynamic based on entity_type
+    "event_subtype": "string", // Specific classification (job_change, funding_round, product_release, etc.)
+    "source_platform": "linkedin|github|youtube|substack|twitter|news|blog|podcast|crunchbase|producthunt|reddit|official",
+    "source_type": "direct|mention|press|analysis",
     "published_at": "ISO8601",
     "discovered_at": "ISO8601",
     "confidence_score": "number",
@@ -182,16 +208,24 @@ docker-compose exec backend lein migrate reset
     "starred_at": "ISO8601?",
     "evidence": {
       "original_url": "string",
-      "extraction_method": "rss|scraping|api",
+      "extraction_method": "rss|scraping|api|search",
       "extraction_quality": "high|medium|low",
       "ai_analysis": {
         "relevance_score": "number",
         "event_classification": "string",
         "key_entities": ["string"],
-        "sentiment": "positive|neutral|negative"
+        "sentiment": "positive|neutral|negative",
+        "impact_score": "number"
       }
     },
-    "regional_mentions": ["string"]
+    "regional_mentions": ["string"],
+    "related_entities": [
+      {
+        "entity_id": "uuid?",
+        "name": "string",
+        "relationship": "string"
+      }
+    ]
   }
 }
 ```
@@ -207,7 +241,7 @@ docker-compose exec backend lein migrate reset
     "color": "string",
     "sort_order": "number",
     "created_at": "ISO8601",
-    "person_count": "number",
+    "entity_count": "number",
     "unread_count": "number"
   }
 }
@@ -263,71 +297,109 @@ PUT    /api/v1/categories/{id}
 DELETE /api/v1/categories/{id}
 ```
 
-### Person Tracking
+### Entity Tracking
 
 ```
-GET    /api/v1/persons
-POST   /api/v1/persons
-GET    /api/v1/persons/{id}
-PUT    /api/v1/persons/{id}
-DELETE /api/v1/persons/{id}
-POST   /api/v1/persons/{id}/refresh
-PUT    /api/v1/persons/{id}/mark-all-read
+GET    /api/v1/entities
+POST   /api/v1/entities
+GET    /api/v1/entities/{id}
+PUT    /api/v1/entities/{id}
+DELETE /api/v1/entities/{id}
+POST   /api/v1/entities/{id}/refresh
+PUT    /api/v1/entities/{id}/mark-all-read
 ```
 
-#### Create Person Tracking (Minimal)
+#### Create Entity Tracking (Person - Minimal)
 
 ```http
-POST /api/v1/persons
+POST /api/v1/entities
 Content-Type: application/json
 Authorization: Bearer jwt-token
 
 {
+  "entity_type": "person",
   "name": "Jane Doe",
-  "known_profiles": [
+  "known_identifiers": [
     {
+      "type": "profile",
       "platform": "linkedin",
+      "value": "janedoe",
       "url": "https://www.linkedin.com/in/janedoe"
     }
   ]
 }
 ```
 
-#### Create Person Tracking (Full Configuration)
+#### Create Entity Tracking (Company - Full Configuration)
 
 ```http
-POST /api/v1/persons
+POST /api/v1/entities
 Content-Type: application/json
 Authorization: Bearer jwt-token
 
 {
-  "name": "Jane Doe",
-  "aliases": ["J. Doe"],
+  "entity_type": "company",
+  "name": "OpenAI",
+  "aliases": ["OpenAI Inc", "OpenAI LP"],
+  "description": "AI research and deployment company",
   "category_id": "cat-123",
-  "known_profiles": [
+  "known_identifiers": [
     {
-      "platform": "linkedin",
-      "url": "https://www.linkedin.com/in/janedoe"
+      "type": "domain",
+      "value": "openai.com",
+      "url": "https://openai.com"
     },
     {
-      "platform": "github",
-      "username": "janed"
+      "type": "handle",
+      "platform": "twitter",
+      "value": "@openai"
     },
     {
-      "platform": "substack",
-      "url": "https://janedoe.substack.com"
+      "type": "profile",
+      "platform": "crunchbase",
+      "value": "openai",
+      "url": "https://crunchbase.com/organization/openai"
     }
   ],
   "tracking_config": {
-    "event_types": ["career", "content", "open_source", "press", "hobbies"],
-    "sources": ["github", "substack", "youtube", "news"],
+    "event_types": ["funding", "product_launch", "hiring", "partnerships", "press"],
+    "sources": ["news", "crunchbase", "twitter", "blog", "official"],
     "time_window_days": 90,
-    "authorship_filter": "include_mentions",
-    "privacy_settings": {
-      "hide_life_events": false,
-      "hide_relationship_items": true,
-      "public_only": false
+    "mention_filter": "include_mentions",
+    "sensitivity_settings": {
+      "hide_sensitive_events": false,
+      "public_only": true,
+      "min_confidence_threshold": 0.8
     }
+  }
+}
+```
+
+#### Create Entity Tracking (Product)
+
+```http
+POST /api/v1/entities
+Content-Type: application/json
+Authorization: Bearer jwt-token
+
+{
+  "entity_type": "product",
+  "name": "ChatGPT",
+  "aliases": ["GPT-4", "OpenAI ChatGPT"],
+  "known_identifiers": [
+    {
+      "type": "domain",
+      "value": "chat.openai.com",
+      "url": "https://chat.openai.com"
+    },
+    {
+      "type": "keyword",
+      "value": "ChatGPT"
+    }
+  ],
+  "tracking_config": {
+    "event_types": ["release", "update", "review", "integration", "pricing"],
+    "sources": ["news", "reddit", "producthunt", "github", "official"]
   }
 }
 ```
@@ -338,40 +410,45 @@ Response:
 {
   "success": true,
   "data": {
-    "id": "person-456",
-    "name": "Jane Doe",
-    "aliases": ["J. Doe"],
+    "id": "entity-456",
+    "entity_type": "company",
+    "name": "OpenAI",
+    "aliases": ["OpenAI Inc", "OpenAI LP"],
     "status": "active",
     "category_id": "cat-123",
     "created_at": "2025-01-26T10:30:00Z",
     "event_count": 0,
     "unread_count": 0,
-    "rss_feed_url": "https://api.prismfeeder.com/api/v1/persons/person-456/feed.rss?token=abc123"
+    "rss_feed_url": "https://api.prismfeeder.com/api/v1/entities/entity-456/feed.rss?token=abc123"
   }
 }
 ```
 
-### Profile Discovery
+### Entity Discovery
 
 ```
-POST   /api/v1/discovery/profiles
+POST   /api/v1/discovery/entities
 POST   /api/v1/discovery/preview
 ```
 
-#### Discover Person Profiles
+#### Discover Entity Identifiers
 
 ```http
-POST /api/v1/discovery/profiles
+POST /api/v1/discovery/entities
 Content-Type: application/json
 Authorization: Bearer jwt-token
 
 {
-  "name": "Jane Doe",
-  "known_profile": "https://www.linkedin.com/in/janedoe",
+  "entity_type": "company",
+  "name": "Anthropic",
+  "known_identifier": {
+    "type": "domain",
+    "value": "anthropic.com"
+  },
   "options": {
     "search_social_media": true,
-    "search_professional": true,
-    "search_content_platforms": true,
+    "search_business_databases": true,
+    "search_news_sources": true,
     "confidence_threshold": 0.7
   }
 }
@@ -466,14 +543,14 @@ GET    /api/v1/events
 GET    /api/v1/events/{id}
 PUT    /api/v1/events/{id}
 PUT    /api/v1/events/batch
-GET    /api/v1/persons/{id}/events
-GET    /api/v1/persons/{id}/feed.rss
+GET    /api/v1/entities/{id}/events
+GET    /api/v1/entities/{id}/feed.rss
 ```
 
 #### List Events with Filters
 
 ```http
-GET /api/v1/events?status=unread&limit=20&offset=0&person_id=person-456&event_type=career&search=promotion
+GET /api/v1/events?status=unread&limit=20&offset=0&entity_id=entity-456&event_type=funding&search=series
 Authorization: Bearer jwt-token
 ```
 
@@ -483,7 +560,7 @@ Query Parameters:
 - `event_type`: career|content|open_source|press|projects|education|hobbies|life|relationship (can repeat)
 - `source_platform`: linkedin|github|youtube|substack|twitter|news|blog|podcast (can repeat)
 - `author_type`: self|press|mention
-- `person_id`: uuid
+- `entity_id`: uuid
 - `category_id`: uuid
 - `search`: string
 - `published_after`: ISO8601
@@ -544,10 +621,10 @@ Response:
 }
 ```
 
-#### RSS Feed for Person
+#### RSS Feed for Entity
 
 ```http
-GET /api/v1/persons/person-456/feed.rss?token=feed-token-123
+GET /api/v1/entities/entity-456/feed.rss?token=feed-token-123
 ```
 
 Response (RSS XML):
@@ -692,7 +769,7 @@ WSS /api/v1/ws?token=jwt-token
 ### Feed URL Structure
 
 ```
-https://api.prismfeeder.com/api/v1/persons/{person-id}/feed.rss?token={feed-token}
+https://api.prismfeeder.com/api/v1/entities/{entity-id}/feed.rss?token={feed-token}
 ```
 
 ### Feed Filtering Parameters
@@ -724,31 +801,40 @@ Users can customize their RSS feed with URL parameters:
 
 ### Example Feed Items
 
-#### Career Event
+#### Person - Career Event
 ```
 Title: Jane Doe joins Acme as VP of Product
 Link: https://techcrunch.com/jane-doe-acme
 Date: Tue, Sep 23, 2025
 Summary: TechCrunch reports Jane Doe's move to Acme Corp as VP of Product.
-Footer: Type: career.job_change • Source: News • Evidence: techcrunch.com • Confidence: 92%
+Footer: Type: career.job_change • Source: News • Confidence: 92%
 ```
 
-#### Content Event
+#### Company - Funding Event
 ```
-Title: How I think about product strategy
-Link: https://janedoe.substack.com/product-strategy  
+Title: Anthropic raises $4B Series C led by Google
+Link: https://techcrunch.com/anthropic-series-c-funding
 Date: Mon, Sep 22, 2025
-Summary: New blog post discussing product strategy and AI tools.
-Footer: Type: content.post • Source: Substack • Authorship: self-authored • Confidence: 98%
+Summary: AI safety company Anthropic secures major funding round for Claude development.
+Footer: Type: funding.series_c • Source: News • Confidence: 95%
 ```
 
-#### Open Source Event
+#### Product - Release Event
 ```
-Title: acme/app v1.2.0 released
-Link: https://github.com/acme/app/releases/tag/v1.2.0
+Title: iPhone 16 Pro announced with A18 Pro chip
+Link: https://apple.com/newsroom/iphone-16-pro
 Date: Sun, Sep 21, 2025
-Summary: New release with bug fixes and performance improvements.
-Footer: Type: open_source.release • Source: GitHub • Confidence: 95%
+Summary: Apple unveils next-generation iPhone with enhanced AI capabilities.
+Footer: Type: release.major_release • Source: Official • Confidence: 100%
+```
+
+#### Topic - Research Event
+```
+Title: Breakthrough in quantum error correction published in Nature
+Link: https://nature.com/quantum-error-correction-2025
+Date: Fri, Sep 20, 2025
+Summary: New research shows 1000x improvement in quantum computing stability.
+Footer: Type: research.breakthrough • Source: Scholar • Confidence: 94%
 ```
 
 ## Error Handling
