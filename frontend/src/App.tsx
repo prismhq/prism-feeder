@@ -1,40 +1,46 @@
 import { Routes, Route, Link } from "react-router-dom";
 import "./App.css";
 import Home from "./components/Home";
-import Feeds from "./components/Feeds";
-import Entries from "./components/Entries";
-import Categories from "./components/Categories";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+} from "./components/ui/sidebar";
 
 function App() {
   return (
-    <div className="app">
-      <nav className="nav">
-        <h2>Prism Feeder</h2>
-        <ul>
-          <li>
-            <Link to="/">Home</Link>
-          </li>
-          <li>
-            <Link to="/feeds">Feeds</Link>
-          </li>
-          <li>
-            <Link to="/entries">Entries</Link>
-          </li>
-          <li>
-            <Link to="/categories">Categories</Link>
-          </li>
-        </ul>
-      </nav>
-
-      <main className="main-content">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/feeds" element={<Feeds />} />
-          <Route path="/entries" element={<Entries />} />
-          <Route path="/categories" element={<Categories />} />
-        </Routes>
-      </main>
-    </div>
+    <SidebarProvider>
+      <Sidebar>
+        <SidebarHeader>
+          <h2 className="text-lg font-semibold">Prism Feeder</h2>
+        </SidebarHeader>
+        <SidebarContent>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <Link to="/">Home</Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarContent>
+      </Sidebar>
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger className="-ml-1" />
+        </header>
+        <main className="flex flex-1 flex-col gap-4 p-4">
+          <Routes>
+            <Route path="/" element={<Home />} />
+          </Routes>
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 
